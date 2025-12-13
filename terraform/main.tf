@@ -15,10 +15,13 @@ provider "yandex" {
 resource "yandex_ydb_database_serverless" "ydb" {
   name      = "${var.prefix}-ydb"
   folder_id = var.folder_id
+  serverless_database {
+    storage_size_limit = 1
+  }
 }
 
 resource "yandex_ydb_table" "docs_table" {
-  path              = "${var.prefix}_dir/docs_table"
+  path              = "${var.prefix}_docs_table"
   connection_string = yandex_ydb_database_serverless.ydb.ydb_full_endpoint
 
   column {
@@ -161,6 +164,36 @@ resource "yandex_function" "download" {
   }
 }
 
+// fetch-ydb: function
+data "archive_file" "fetch_ydb_zip" {
+  type        = "zip"
+  output_path = "function-fetch-ydb.zip"
+  source_dir  = "../src/fetch-ydb"
+
+  excludes = ["__pycache__", "*.pyc", ".DS_Store", ".env", ".python-version", ".venv", "uv.lock"]
+}
+
+resource "yandex_function" "fetch_ydb" {
+  name               = "${var.prefix}-fetch-ydb"
+  description        = "Функция возвращает все метаданные с YDB"
+  user_hash          = data.archive_file.fetch_ydb_zip.output_sha256
+  runtime            = "python312"
+  entrypoint         = "main.handler"
+  memory             = "256"
+  execution_timeout  = "60"
+  folder_id          = var.folder_id
+  service_account_id = yandex_iam_service_account.sa.id
+  content {
+    zip_filename = data.archive_file.fetch_ydb_zip.output_path
+  }
+  environment = {
+    YDB_ENDPOINT        = "grpcs://${yandex_ydb_database_serverless.ydb.ydb_api_endpoint}"
+    YDB_DATABASE        = yandex_ydb_database_serverless.ydb.database_path
+    YDB_DOCS_TABLE_NAME = yandex_ydb_table.docs_table.path
+  }
+}
+
+// gateway
 resource "yandex_api_gateway" "docs_gateway" {
   name      = "${var.prefix}-gateway"
   folder_id = var.folder_id
@@ -172,12 +205,13 @@ resource "yandex_api_gateway" "docs_gateway" {
     bucket_name        = yandex_storage_bucket.bucket.bucket
     service_account_id = yandex_iam_service_account.sa.id
 
-    download_queue_url = data.yandex_message_queue.download_queue.url
-    ydb_db             = yandex_ydb_database_serverless.ydb.database_path
-    docs_table_name    = yandex_ydb_table.docs_table.path
+    download_queue_url    = data.yandex_message_queue.download_queue.url
+    ydb_db                = yandex_ydb_database_serverless.ydb.database_path
+    docs_table_name       = yandex_ydb_table.docs_table.path
+    fetch_ydb_function_id = yandex_function.fetch_ydb.id
   })
 
-  depends_on = [ yandex_ydb_database_iam_binding.sa_ydb_viewer ]
+  depends_on = [yandex_ydb_database_iam_binding.sa_ydb_viewer]
 }
 
 output "api_gateway_url" {

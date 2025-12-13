@@ -50,9 +50,15 @@ paths:
   /documents:
     get:
       description: Get docs
+      # не работает
+      # x-yc-apigateway-integration:
+      #   type: cloud_ydb
+      #   action: Scan
+      #   database: ${ydb_db}
+      #   table_name: ${docs_table_name}
+      #   service_account_id: ${service_account_id}
       x-yc-apigateway-integration:
-        type: cloud_ydb
-        action: Scan
-        database: ${ydb_db}
-        table_name: ${docs_table_name}
+        type: cloud_functions
+        function_id: ${fetch_ydb_function_id}
         service_account_id: ${service_account_id}
+        timeout_ms: 30000
