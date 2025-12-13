@@ -1,0 +1,10 @@
+[project]
+name = "download"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "boto3>=1.42.9",
+    "dotenv>=0.9.9",
+    "ydb>=3.22.3",
+]
