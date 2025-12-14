@@ -54,10 +54,6 @@ resource "yandex_resourcemanager_folder_iam_member" "sa_editor" {
   member    = "serviceAccount:${yandex_iam_service_account.sa.id}"
 }
 
-resource "yandex_iam_service_account_api_key" "sa_api_key" {
-  service_account_id = yandex_iam_service_account.sa.id
-}
-
 resource "yandex_ydb_database_iam_binding" "sa_ydb_viewer" {
   database_id = yandex_ydb_database_serverless.ydb.id
   role        = "ydb.viewer"
