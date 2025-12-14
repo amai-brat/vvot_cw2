@@ -13,8 +13,10 @@ terraform apply \
 ```bash
 curl -X POST \
   -H 'Content-Type: application/json' \
-  -d '{"name": "sample0", "url": "https://sakuya.su/cw02.pdf"}' \ 
+  -d '{"name": "Контрольная работа ВВОТ 2.pdf", "url": "https://sakuya.su/cw02.pdf"}' \ 
   https://{api_gateway_url}/upload
 
 curl https://{api_gateway_url}/documents
+
+curl https://{api_gateway_url}/document/{key} -I -s -X GET
 ```
